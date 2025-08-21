@@ -1,4 +1,4 @@
-const CACHE_NAME = 'de.juzmu.tom-bola-v1';
+const CACHE_NAME = 'de.juzmu.tom-bola-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -16,6 +16,12 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
   );
+});
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.action === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', event => {

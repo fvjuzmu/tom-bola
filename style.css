@@ -1,6 +1,30 @@
+:root {
+    --bg-color: #fff;
+    --text-color: #222;
+    --table-border-color: #ddd;
+    --header-bg-color: #f2f2f2;
+    --checked-text-color: #aaa;
+    --modal-bg-color: #fefefe;
+    --button-bg-color: #f0f0f0;
+    --button-text-color: #222;
+}
+
+body[data-theme="dark"] {
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --table-border-color: #444;
+    --header-bg-color: #333;
+    --checked-text-color: #666;
+    --modal-bg-color: #2d2d2d;
+    --button-bg-color: #333;
+    --button-text-color: #e0e0e0;
+}
+
 body {
     font-family: sans-serif;
     padding: 20px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
 }
 
 .container {
@@ -10,6 +34,17 @@ body {
 
 #installButton {
     display: none;
+}
+
+#statusCounter {
+    margin: 15px 0;
+    font-weight: bold;
+    text-align: center;
+}
+
+.button-group {
+    text-align: center;
+    margin: 10px 0;
 }
 
 h1 {
@@ -24,6 +59,14 @@ input[type="file"], input[type="text"] {
     max-width: 500px;
 }
 
+button {
+    padding: 8px 12px;
+    border: 1px solid var(--table-border-color);
+    background-color: var(--button-bg-color);
+    color: var(--button-text-color);
+    cursor: pointer;
+}
+
 table {
     width: 100%;
     margin-top: 20px;
@@ -31,7 +74,7 @@ table {
 }
 
 th, td {
-    border: 1px solid #ddd;
+    border: 1px solid var(--table-border-color);
     padding: 8px;
     text-align: left;
 }
@@ -42,10 +85,71 @@ th, td {
 }
 
 th {
-    background-color: #f2f2f2;
+    background-color: var(--header-bg-color);
 }
 
 tr.checked td {
-    color: #aaa;
+    color: var(--checked-text-color);
     text-decoration: line-through;
+}
+
+mark {
+    background-color: yellow;
+    padding: 0;
+    color: #000;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+    background-color: var(--modal-bg-color);
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 5px;
+}
+
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: var(--text-color);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.option-group {
+    margin-bottom: 20px;
+}
+
+.option-group h3 {
+    margin-top: 0;
+    border-bottom: 1px solid var(--table-border-color);
+    padding-bottom: 5px;
+}
+
+.option-group label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.hide-checked .checked {
+    display: none;
 }

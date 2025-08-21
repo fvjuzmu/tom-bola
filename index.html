@@ -14,9 +14,14 @@
         <br>
         <input type="text" id="searchInput" placeholder="Suche nach ID oder Name...">
         <br>
-        <button id="exportCsvButton">CSV exportieren</button>
-        <button id="installButton" style="display: none;">App installieren</button>
+        <div class="button-group">
+            <button id="exportCsvButton">CSV exportieren</button>
+            <button id="optionsButton">Optionen</button>
+            <button id="helpButton">Hilfe</button>
+            <button id="installButton">App installieren</button>
+        </div>
         <br>
+        <div id="statusCounter"></div>
         <table id="csvTable">
             <thead>
                 <tr>
@@ -30,19 +35,23 @@
         </table>
     </div>
 
+    <div id="optionsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Optionen</h2>
+            <div class="option-group">
+                <h3>Darstellung</h3>
+                <label><input type="radio" name="theme" value="auto"> Automatisch</label>
+                <label><input type="radio" name="theme" value="light"> Hell</label>
+                <label><input type="radio" name="theme" value="dark"> Dunkel</label>
+            </div>
+            <div class="option-group">
+                <h3>Ansicht</h3>
+                <label><input type="checkbox" id="hideChecked"> Ausgegebene ausblenden</label>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
-            });
-        }
-    </script>
 </body>
 </html>
