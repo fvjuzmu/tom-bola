@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tom Bola</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div class="container">
+        <h1>Tom Bola</h1>
+        <input type="file" id="csvFile" accept=".csv">
+        <br>
+        <input type="text" id="searchInput" placeholder="Suche nach ID oder Name...">
+        <br>
+        <button id="exportCsvButton">CSV exportieren</button>
+        <button id="installButton" style="display: none;">App installieren</button>
+        <br>
+        <table id="csvTable">
+            <thead>
+                <tr>
+                    <th class="check-col">Auswahl</th>
+                    <th class="id-col">ID</th>
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

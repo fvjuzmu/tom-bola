@@ -1,0 +1,51 @@
+body {
+    font-family: sans-serif;
+    padding: 20px;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+#installButton {
+    display: none;
+}
+
+h1 {
+    text-align: center;
+}
+
+input[type="file"], input[type="text"] {
+    display: block;
+    margin: 10px auto;
+    padding: 10px;
+    width: 80%;
+    max-width: 500px;
+}
+
+table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.check-col, .id-col {
+    width: 1%;
+    white-space: nowrap;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+tr.checked td {
+    color: #aaa;
+    text-decoration: line-through;
+}
