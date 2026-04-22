@@ -116,51 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
         applyTheme(savedTheme);
         applyHideChecked(savedHideChecked);
 
-        const signalingInput = document.getElementById('collab-signaling-input');
-        const signalingTestBtn = document.getElementById('collab-signaling-test');
-        const signalingResult = document.getElementById('collab-signaling-result');
-
-        if (signalingInput) {
-            signalingInput.value = localStorage.getItem('collab_signaling_url') || '';
-            signalingInput.addEventListener('change', (e) => {
-                const val = e.target.value.trim();
-                if (val) localStorage.setItem('collab_signaling_url', val);
-                else localStorage.removeItem('collab_signaling_url');
-            });
-        }
-
-        if (signalingTestBtn && signalingResult) {
-            signalingTestBtn.addEventListener('click', () => {
-                const url = (signalingInput && signalingInput.value.trim())
-                    || 'wss://y-webrtc-eu.fly.dev';
-                signalingResult.style.display = 'block';
-                signalingResult.style.color = 'inherit';
-                signalingResult.textContent = `Teste ${url} …`;
-                signalingTestBtn.disabled = true;
-
-                const ws = new WebSocket(url);
-                const timeout = setTimeout(() => {
-                    ws.close();
-                    showResult('⏱ Timeout (5s) — Server nicht erreichbar', 'red');
-                }, 5000);
-
-                ws.onopen = () => {
-                    clearTimeout(timeout);
-                    ws.close();
-                    showResult(`✓ ${url} ist erreichbar`, 'green');
-                };
-                ws.onerror = () => {
-                    clearTimeout(timeout);
-                    showResult(`✗ ${url} — Verbindung fehlgeschlagen`, 'red');
-                };
-
-                function showResult(msg, color) {
-                    signalingResult.textContent = msg;
-                    signalingResult.style.color = color;
-                    signalingTestBtn.disabled = false;
-                }
-            });
-        }
     }
     // --- End Options Logic ---
 

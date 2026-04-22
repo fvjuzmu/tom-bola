@@ -26,10 +26,7 @@
             <span id="collab-status">Nicht verbunden</span>
             <span id="collab-myname" class="collab-name"></span>
             <div class="collab-join">
-                <input id="collab-room-input" type="password" placeholder="Raumcode…" autocomplete="off">
-                <button id="collab-room-reveal" title="Raumcode anzeigen">👁</button>
                 <button id="collab-toggle">Verbinden</button>
-                <button id="collab-share">Link kopieren</button>
             </div>
         </div>
         <input type="text" id="searchInput" placeholder="Suche nach ID oder Name...">
@@ -66,20 +63,16 @@
                 <label><input type="checkbox" id="hideChecked"> Ausgegebene ausblenden</label>
             </div>
             <div class="option-group">
-                <h3>Signaling-Server</h3>
-                <div style="display:flex;gap:6px;align-items:center">
-                    <input type="url" id="collab-signaling-input"
-                        placeholder="wss://y-webrtc-eu.fly.dev (Standard)"
-                        style="flex:1;margin:0">
-                    <button id="collab-signaling-test">Testen</button>
-                </div>
-                <small id="collab-signaling-result" style="display:none"></small>
-                <small>Leer lassen für öffentliche Server. Eigenen Server eintragen falls diese nicht erreichbar sind.</small>
-            </div>
-            <div class="option-group">
                 <h3>Mitspieler</h3>
                 <div id="collab-peer-list"><em>Nicht verbunden</em></div>
             </div>
+        </div>
+    </div>
+
+    <div id="pairingModal" class="modal">
+        <div class="modal-content pairing-modal-content">
+            <span class="close-button" id="pairing-close">&times;</span>
+            <div id="pairing-content"></div>
         </div>
     </div>
 
