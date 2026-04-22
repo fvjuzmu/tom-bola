@@ -6,13 +6,12 @@
     <title>Tom Bola</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 </head>
 <body>
     <div class="container">
-        <h1>Tom Bola</h1>
+        <img src="/icons/icon.svg" id="app-icon" alt="Tom Bola">
         <input type="file" id="csvFile" accept=".csv">
-        <br>
-        <input type="text" id="searchInput" placeholder="Suche nach ID oder Name...">
         <br>
         <div class="button-group">
             <button id="exportCsvButton">CSV exportieren</button>
@@ -22,6 +21,18 @@
         </div>
         <br>
         <div id="statusCounter"></div>
+        <div id="collab-bar">
+            <span id="collab-dot" data-state="offline">●</span>
+            <span id="collab-status">Nicht verbunden</span>
+            <span id="collab-myname" class="collab-name"></span>
+            <div class="collab-join">
+                <input id="collab-room-input" type="password" placeholder="Raumcode…" autocomplete="off">
+                <button id="collab-room-reveal" title="Raumcode anzeigen">👁</button>
+                <button id="collab-toggle">Verbinden</button>
+                <button id="collab-share">Link kopieren</button>
+            </div>
+        </div>
+        <input type="text" id="searchInput" placeholder="Suche nach ID oder Name...">
         <table id="csvTable">
             <thead>
                 <tr>
@@ -34,6 +45,11 @@
             </tbody>
         </table>
     </div>
+
+    <footer id="app-footer">
+        <a href="https://github.com/fvjuzmu/tom-bola" target="_blank" rel="noopener">GitHub</a>
+        <span id="app-version"></span>
+    </footer>
 
     <div id="optionsModal" class="modal">
         <div class="modal-content">
@@ -49,9 +65,25 @@
                 <h3>Ansicht</h3>
                 <label><input type="checkbox" id="hideChecked"> Ausgegebene ausblenden</label>
             </div>
+            <div class="option-group">
+                <h3>Signaling-Server</h3>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <input type="url" id="collab-signaling-input"
+                        placeholder="wss://y-webrtc-eu.fly.dev (Standard)"
+                        style="flex:1;margin:0">
+                    <button id="collab-signaling-test">Testen</button>
+                </div>
+                <small id="collab-signaling-result" style="display:none"></small>
+                <small>Leer lassen für öffentliche Server. Eigenen Server eintragen falls diese nicht erreichbar sind.</small>
+            </div>
+            <div class="option-group">
+                <h3>Mitspieler</h3>
+                <div id="collab-peer-list"><em>Nicht verbunden</em></div>
+            </div>
         </div>
     </div>
 
     <script src="app.js"></script>
+    <script type="module" src="collab.js"></script>
 </body>
 </html>

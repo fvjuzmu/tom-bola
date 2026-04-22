@@ -1,9 +1,11 @@
-const CACHE_NAME = 'de.juzmu.tom-bola-v2';
+const CACHE_NAME = 'de.juzmu.tom-bola-v3';
 const urlsToCache = [
   '/',
   '/index.html',
   '/style.css',
   '/app.js',
+  '/collab.js',
+  '/VERSION',
   '/icons/icon.svg',
   '/manifest.json'
 ];
@@ -11,17 +13,19 @@ const urlsToCache = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
+      .then(cache => cache.addAll(urlsToCache))
+      .then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener('message', event => {
-  if (event.data && event.data.action === 'skipWaiting') {
-    self.skipWaiting();
-  }
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', event => {

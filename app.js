@@ -115,6 +115,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
         applyTheme(savedTheme);
         applyHideChecked(savedHideChecked);
+
+        const signalingInput = document.getElementById('collab-signaling-input');
+        const signalingTestBtn = document.getElementById('collab-signaling-test');
+        const signalingResult = document.getElementById('collab-signaling-result');
+
+        if (signalingInput) {
+            signalingInput.value = localStorage.getItem('collab_signaling_url') || '';
+            signalingInput.addEventListener('change', (e) => {
+                const val = e.target.value.trim();
+                if (val) localStorage.setItem('collab_signaling_url', val);
+                else localStorage.removeItem('collab_signaling_url');
+            });
+        }
+
+        if (signalingTestBtn && signalingResult) {
+            signalingTestBtn.addEventListener('click', () => {
+                const url = (signalingInput && signalingInput.value.trim())
+                    || 'wss://y-webrtc-eu.fly.dev';
+                signalingResult.style.display = 'block';
+                signalingResult.style.color = 'inherit';
+                signalingResult.textContent = `Teste ${url} …`;
+                signalingTestBtn.disabled = true;
+
+                const ws = new WebSocket(url);
+                const timeout = setTimeout(() => {
+                    ws.close();
+                    showResult('⏱ Timeout (5s) — Server nicht erreichbar', 'red');
+                }, 5000);
+
+                ws.onopen = () => {
+                    clearTimeout(timeout);
+                    ws.close();
+                    showResult(`✓ ${url} ist erreichbar`, 'green');
+                };
+                ws.onerror = () => {
+                    clearTimeout(timeout);
+                    showResult(`✗ ${url} — Verbindung fehlgeschlagen`, 'red');
+                };
+
+                function showResult(msg, color) {
+                    signalingResult.textContent = msg;
+                    signalingResult.style.color = color;
+                    signalingTestBtn.disabled = false;
+                }
+            });
+        }
     }
     // --- End Options Logic ---
 
@@ -207,6 +253,9 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('lastCsvFileName', originalFileName);
 
             processCsvContent(fileContent);
+            window.dispatchEvent(new CustomEvent('tombola:csvloaded', {
+                detail: { content: fileContent, hash: currentFileHash, filename: originalFileName }
+            }));
         } catch (error) {
             console.error("Fehler bei der Dateiverarbeitung:", error);
             alert("Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
@@ -222,8 +271,16 @@ document.addEventListener('DOMContentLoaded', () => {
             currentFileHash = lastCsvHash;
             originalFileName = lastCsvFileName;
             processCsvContent(lastCsvContent);
+            window.dispatchEvent(new CustomEvent('tombola:csvloaded', {
+                detail: { content: lastCsvContent, hash: currentFileHash, filename: originalFileName }
+            }));
         }
     }
+
+    fetch('/VERSION').then(r => r.text()).then(v => {
+        const el = document.getElementById('app-version');
+        if (el) el.textContent = `v${v.trim()}`;
+    }).catch(() => {});
 
     loadLastFile();
     loadOptions();
@@ -306,6 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
             checkedStates = checkedStates.filter(checkedId => checkedId !== id);
         }
         saveCheckedStates(checkedStates);
+        window.dispatchEvent(new CustomEvent('tombola:localchange', {
+            detail: { id, isChecked }
+        }));
         updateStatusCounter();
     }
 
@@ -364,24 +424,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // PWA Update Logic
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').then(reg => {
-            reg.addEventListener('updatefound', () => {
-                const newWorker = reg.installing;
-                newWorker.addEventListener('statechange', () => {
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        if (confirm("Eine neue Version der App ist verfügbar. Jetzt neu laden?")) {
-                            newWorker.postMessage({ action: 'skipWaiting' });
-                        }
-                    }
-                });
-            });
-        });
+        navigator.serviceWorker.register('/sw.js');
 
         let refreshing;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
             if (refreshing) return;
-            window.location.reload();
             refreshing = true;
+            window.location.reload();
         });
     }
+
+    window.addEventListener('tombola:remotechange', (e) => {
+        saveCheckedStates(e.detail.checkedIds);
+        renderTable(tableData);
+        updateStatusCounter();
+    });
+
+    window.addEventListener('tombola:remotecsv', (e) => {
+        const { content, hash, filename } = e.detail;
+        currentFileHash = hash;
+        originalFileName = filename;
+        localStorage.setItem('lastCsvContent', content);
+        localStorage.setItem('lastCsvHash', hash);
+        localStorage.setItem('lastCsvFileName', filename);
+        processCsvContent(content);
+    });
 });
