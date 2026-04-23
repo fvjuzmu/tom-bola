@@ -1,88 +1,96 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const csvFileInput = document.getElementById('csvFile');
-    const searchInput = document.getElementById('searchInput');
-    const exportCsvButton = document.getElementById('exportCsvButton');
-    const installButton = document.getElementById('installButton');
-    const helpButton = document.getElementById('helpButton');
-    const optionsButton = document.getElementById('optionsButton');
-    const statusCounter = document.getElementById('statusCounter');
-    const tableBody = document.querySelector('#csvTable tbody');
-    const optionsModal = document.getElementById('optionsModal');
-    const closeModalButton = document.querySelector('.close-button');
-    const themeRadios = document.querySelectorAll('input[name="theme"]');
+    const csvFileInput        = document.getElementById('csvFile');
+    const searchInput         = document.getElementById('searchInput');
+    const importCsvButton     = document.getElementById('importCsvButton');
+    const exportCsvButton     = document.getElementById('exportCsvButton');
+    const installButton       = document.getElementById('installButton');
+    const helpButton          = document.getElementById('helpButton');
+    const optionsButton       = document.getElementById('optionsButton');
+    const statusCounter       = document.getElementById('statusCounter');
+    const tableBody           = document.querySelector('#csvTable tbody');
+    const optionsModal        = document.getElementById('optionsModal');
+    const closeModalButton    = document.querySelector('.close-button');
+    const themeRadios         = document.querySelectorAll('input[name="theme"]');
     const hideCheckedCheckbox = document.getElementById('hideChecked');
-    let currentFileHash = '';
-    let tableData = [];
+    const datasetSelect       = document.getElementById('dataset-select');
+
+    let currentFileHash  = '';
+    let tableData        = [];
     let originalFileName = '';
     let deferredPrompt;
+    let lastSyncTime     = 0;
+    let syncTimer        = null;
 
+    const API_URL = 'api.php';
+
+    // --- PWA install ---
     window.addEventListener('beforeinstallprompt', (e) => {
-        // Prevent the mini-infobar from appearing on mobile
         e.preventDefault();
-        // Stash the event so it can be triggered later.
         deferredPrompt = e;
-        // Update UI to notify the user they can install the PWA
         if (!window.matchMedia('(display-mode: standalone)').matches) {
             installButton.style.display = 'inline-block';
         }
     });
 
-    // For Firefox, the install prompt is not supported, so we show the button to provide instructions.
-    if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1 && !window.matchMedia('(display-mode: standalone)').matches) {
+    if (!window.matchMedia('(display-mode: standalone)').matches) {
         installButton.style.display = 'inline-block';
     }
 
     installButton.addEventListener('click', async () => {
-        console.log("Install button clicked.");
         if (deferredPrompt) {
-            console.log("deferredPrompt is available. Showing install prompt.");
-            // Hide the app provided install promotion
             installButton.style.display = 'none';
-            // Show the install prompt
             deferredPrompt.prompt();
-            // Wait for the user to respond to the prompt
             await deferredPrompt.userChoice;
-            // We've used the prompt, and can't use it again, throw it away
             deferredPrompt = null;
-        } else if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {
-            console.log("Browser is Firefox. Showing instructions.");
-            alert(
-                "So installieren Sie die App in Firefox:\n\n" +
-                "1. Tippen Sie auf die Drei-Punkte-Menüschaltfläche in der Adressleiste.\n" +
-                "2. Wählen Sie 'App zum Startbildschirm hinzufügen' oder 'Installieren'.\n" +
-                "3. Folgen Sie den Anweisungen auf dem Bildschirm."
-            );
         } else {
-            console.log("deferredPrompt is not available. Cannot show install prompt. This is expected if the app is already installed or the browser's criteria haven't been met.");
-            alert("Die App kann derzeit nicht installiert werden. Sie ist möglicherweise bereits installiert oder die Installationskriterien des Browsers sind nicht erfüllt.");
+            const ua = navigator.userAgent.toLowerCase();
+            if (ua.indexOf('firefox') > -1) {
+                alert(
+                    "So installieren Sie die App in Firefox:\n\n" +
+                    "1. Tippen Sie auf die Drei-Punkte-Menüschaltfläche in der Adressleiste.\n" +
+                    "2. Wählen Sie 'App zum Startbildschirm hinzufügen' oder 'Installieren'.\n" +
+                    "3. Folgen Sie den Anweisungen auf dem Bildschirm."
+                );
+            } else if (ua.indexOf('chrome') > -1 || ua.indexOf('android') > -1) {
+                alert(
+                    "So installieren Sie die App in Chrome:\n\n" +
+                    "1. Tippen Sie auf die Drei-Punkte-Menüschaltfläche oben rechts.\n" +
+                    "2. Wählen Sie 'App installieren' oder 'Zum Startbildschirm hinzufügen'.\n" +
+                    "3. Folgen Sie den Anweisungen auf dem Bildschirm."
+                );
+            } else {
+                alert("Bitte verwenden Sie das Browsermenü, um die App zum Startbildschirm hinzuzufügen.");
+            }
         }
     });
 
     window.addEventListener('appinstalled', () => {
-        // Hide the install button
         installButton.style.display = 'none';
-        // Clear the deferredPrompt so it can be garbage collected
         deferredPrompt = null;
-        console.log('PWA wurde installiert');
     });
 
     csvFileInput.addEventListener('change', handleFileSelect);
+    importCsvButton.addEventListener('click', () => csvFileInput.click());
     searchInput.addEventListener('input', handleSearch);
     exportCsvButton.addEventListener('click', handleExport);
     helpButton.addEventListener('click', showHelp);
     optionsButton.addEventListener('click', () => optionsModal.style.display = 'block');
     closeModalButton.addEventListener('click', () => optionsModal.style.display = 'none');
     window.addEventListener('click', (event) => {
-        if (event.target == optionsModal) {
-            optionsModal.style.display = 'none';
-        }
+        if (event.target === optionsModal) optionsModal.style.display = 'none';
     });
 
-    // --- Options Logic ---
+    datasetSelect.addEventListener('change', (e) => {
+        const hash = e.target.value;
+        if (!hash) return;
+        const opt = datasetSelect.querySelector(`option[value="${CSS.escape(hash)}"]`);
+        selectDataset(hash, opt ? opt.textContent : '');
+    });
+
+    // --- Options ---
     function applyTheme(theme) {
         if (theme === 'auto') {
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            document.body.dataset.theme = prefersDark ? 'dark' : 'light';
+            document.body.dataset.theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         } else {
             document.body.dataset.theme = theme;
         }
@@ -94,66 +102,195 @@ document.addEventListener('DOMContentLoaded', () => {
 
     themeRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
-            const theme = e.target.value;
-            localStorage.setItem('theme', theme);
-            applyTheme(theme);
+            localStorage.setItem('theme', e.target.value);
+            applyTheme(e.target.value);
         });
     });
 
     hideCheckedCheckbox.addEventListener('change', (e) => {
-        const shouldHide = e.target.checked;
-        localStorage.setItem('hideChecked', shouldHide);
-        applyHideChecked(shouldHide);
+        localStorage.setItem('hideChecked', e.target.checked);
+        applyHideChecked(e.target.checked);
     });
 
     function loadOptions() {
-        const savedTheme = localStorage.getItem('theme') || 'auto';
+        const savedTheme       = localStorage.getItem('theme') || 'auto';
         const savedHideChecked = localStorage.getItem('hideChecked') === 'true';
-
         document.querySelector(`input[name="theme"][value="${savedTheme}"]`).checked = true;
         hideCheckedCheckbox.checked = savedHideChecked;
-
         applyTheme(savedTheme);
         applyHideChecked(savedHideChecked);
-
     }
-    // --- End Options Logic ---
+
+    // --- API sync ---
+    function setSyncStatus(state, text) {
+        const dot    = document.getElementById('sync-dot');
+        const status = document.getElementById('sync-status');
+        if (dot)    dot.dataset.state = state;
+        if (status) status.textContent = text;
+    }
+
+    // --- Dataset management ---
+    async function loadDatasets() {
+        try {
+            const r    = await fetch(`${API_URL}?action=datasets`);
+            const data = await r.json();
+            renderDatasetDropdown(data.datasets || []);
+
+            const saved = localStorage.getItem('lastCsvHash');
+            const found = (data.datasets || []).find(d => d.hash === saved);
+            if (found) {
+                selectDataset(found.hash, found.filename);
+            } else if (data.datasets && data.datasets.length === 1) {
+                selectDataset(data.datasets[0].hash, data.datasets[0].filename);
+            }
+        } catch (e) {
+            // offline: loadLastFile() already rendered from localStorage
+        }
+    }
+
+    function renderDatasetDropdown(datasets) {
+        datasetSelect.innerHTML = '<option value="">— Datei auswählen —</option>';
+        datasets.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value       = d.hash;
+            opt.textContent = d.filename;
+            datasetSelect.appendChild(opt);
+        });
+    }
+
+    function selectDataset(hash, filename) {
+        currentFileHash  = hash;
+        originalFileName = filename;
+        datasetSelect.value = hash;
+        tableData    = [];
+        lastSyncTime = 0;
+        startPolling();
+    }
+
+    async function postCsv(content, filename, hash) {
+        setSyncStatus('syncing', 'Lädt…');
+        try {
+            const r = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'load_csv', content, filename, hash })
+            });
+            const data = await r.json();
+            if (!data.ok) throw new Error(data.error || 'Fehler');
+            setSyncStatus('ok', 'Synchronisiert');
+            // Refresh dataset list and select the just-uploaded one
+            await loadDatasets();
+            datasetSelect.value = hash;
+            if (currentFileHash !== hash) selectDataset(hash, filename);
+        } catch (err) {
+            console.warn('CSV-Upload-Fehler:', err);
+            setSyncStatus('error', 'Server nicht erreichbar');
+        }
+    }
+
+    async function postToggle(id, checked) {
+        if (!currentFileHash) return;
+        try {
+            const r = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'toggle', id, dataset: currentFileHash, checked })
+            });
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        } catch (err) {
+            console.warn('Toggle-Sync-Fehler:', err);
+            setSyncStatus('error', 'Sync-Fehler');
+        }
+    }
+
+    async function fetchChanges() {
+        if (!currentFileHash) return;
+        try {
+            const r = await fetch(`${API_URL}?since=${lastSyncTime}&hash=${currentFileHash}`);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json();
+            lastSyncTime = data.server_time;
+
+            if (data.items && data.items.length > 0) {
+                // Bootstrap: first fetch (since=0) with no local data
+                if (tableData.length === 0) {
+                    tableData = data.items.map(i => ({ id: i.id, name: i.name }));
+                    tableData.sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10));
+                    const checkedIds = data.items.filter(i => i.checked).map(i => i.id);
+                    saveCheckedStates(checkedIds);
+                    const csvContent = 'id,name\n' + tableData.map(i => `${i.id},"${i.name}"`).join('\n');
+                    localStorage.setItem('lastCsvContent',  csvContent);
+                    localStorage.setItem('lastCsvHash',      currentFileHash);
+                    localStorage.setItem('lastCsvFileName',  originalFileName);
+                } else {
+                    applyServerState(data.items);
+                }
+                renderTable(tableData);
+                updateStatusCounter();
+            }
+            setSyncStatus('ok', 'Synchronisiert');
+        } catch (err) {
+            console.warn('Sync-Fehler:', err);
+            setSyncStatus('error', 'Server nicht erreichbar');
+        }
+    }
+
+    function applyServerState(items) {
+        if (!currentFileHash) return;
+        let checkedStates = getCheckedStates();
+        let changed = false;
+        items.forEach(({ id, checked }) => {
+            const isChecked  = Boolean(checked);
+            const wasChecked = checkedStates.includes(id);
+            if (isChecked && !wasChecked) {
+                checkedStates.push(id);
+                changed = true;
+            } else if (!isChecked && wasChecked) {
+                checkedStates = checkedStates.filter(cid => cid !== id);
+                changed = true;
+            }
+        });
+        if (changed) {
+            saveCheckedStates(checkedStates);
+            renderTable(tableData);
+            updateStatusCounter();
+        }
+    }
+
+    function startPolling() {
+        if (syncTimer) clearInterval(syncTimer);
+        fetchChanges();
+        syncTimer = setInterval(fetchChanges, 10000);
+    }
+
+    // --- Help ---
+    const helpModal      = document.getElementById('helpModal');
+    const helpModalClose = document.getElementById('helpModalClose');
+    helpModalClose.addEventListener('click', () => helpModal.style.display = 'none');
+    window.addEventListener('click', (event) => {
+        if (event.target === helpModal) helpModal.style.display = 'none';
+    });
 
     function showHelp() {
-        alert(
-            "**CSV-Format:**\n" +
-            "Die CSV-Datei muss eine Kopfzeile mit den Spalten 'id' und 'name' haben. Optional kann eine 'checked'-Spalte (true/false) für den Import vorhanden sein.\n\n" +
-            "**Suche:**\n" +
-            "Suchen Sie nach Namen (Teilübereinstimmung) oder ID (exakte Übereinstimmung).\n\n" +
-            "**Speicherverhalten:**\n" +
-            "Der Status (abgehakt/nicht abgehakt) wird pro Datei automatisch im Browser gespeichert. Der Zustand bleibt auch nach dem Schließen des Browsers erhalten.\n\n" +
-            "**Import/Export:**\n" +
-            "Laden Sie eine CSV-Datei, um zu beginnen. Exportieren Sie die aktuelle Liste inklusive des Abhak-Status als neue CSV-Datei.\n\n" +
-            "**Cache:**\n" +
-            "Die zuletzt geöffnete Datei wird automatisch zwischengespeichert und beim nächsten Öffnen der App wieder geladen."
-        );
+        helpModal.style.display = 'block';
     }
 
     function readFileAsText(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
+            reader.onload  = () => resolve(reader.result);
             reader.onerror = () => reject(reader.error);
             reader.readAsText(file);
         });
     }
 
     function processCsvContent(fileContent) {
-        // Basic CSV parsing
-        const lines = fileContent.split('\n').filter(line => line.trim() !== '');
+        const lines      = fileContent.split('\n').filter(line => line.trim() !== '');
         const headerLine = lines.shift().trim();
-
-        // Detect delimiter by checking the header
-        const delimiter = headerLine.includes(';') ? ';' : ',';
-
-        const headers = headerLine.split(delimiter);
-        const idIndex = headers.indexOf('id');
-        const nameIndex = headers.indexOf('name');
+        const delimiter  = headerLine.includes(';') ? ';' : ',';
+        const headers    = headerLine.split(delimiter);
+        const idIndex    = headers.indexOf('id');
+        const nameIndex  = headers.indexOf('name');
         const checkedIndex = headers.indexOf('checked');
 
         if (idIndex === -1 || nameIndex === -1) {
@@ -164,11 +301,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const initialCheckedStates = [];
         tableData = lines.map(line => {
             const values = line.trim().split(delimiter);
-            const item = {
-                id: values[idIndex],
+            const item   = {
+                id:   values[idIndex],
                 name: values[nameIndex] ? values[nameIndex].replace(/"/g, '') : ''
             };
-
             if (checkedIndex !== -1 && values[checkedIndex] === 'true') {
                 initialCheckedStates.push(item.id);
             }
@@ -177,9 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tableData.sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10));
 
-        if (checkedIndex !== -1) {
-            saveCheckedStates(initialCheckedStates);
-        }
+        if (checkedIndex !== -1) saveCheckedStates(initialCheckedStates);
 
         renderTable(tableData);
         updateStatusCounter();
@@ -187,9 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleFileSelect(event) {
         const file = event.target.files[0];
-        if (!file) {
-            return;
-        }
+        if (!file) return;
 
         originalFileName = file.name;
 
@@ -199,18 +331,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.crypto && window.crypto.subtle) {
                 currentFileHash = await generateHash(fileContent);
             } else {
-                console.warn("Crypto API not available in this context. Using filename as a fallback key.");
                 currentFileHash = file.name;
             }
 
-            localStorage.setItem('lastCsvContent', fileContent);
-            localStorage.setItem('lastCsvHash', currentFileHash);
-            localStorage.setItem('lastCsvFileName', originalFileName);
+            localStorage.setItem('lastCsvContent',  fileContent);
+            localStorage.setItem('lastCsvHash',      currentFileHash);
+            localStorage.setItem('lastCsvFileName',  originalFileName);
 
             processCsvContent(fileContent);
-            window.dispatchEvent(new CustomEvent('tombola:csvloaded', {
-                detail: { content: fileContent, hash: currentFileHash, filename: originalFileName }
-            }));
+            postCsv(fileContent, originalFileName, currentFileHash);
         } catch (error) {
             console.error("Fehler bei der Dateiverarbeitung:", error);
             alert("Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
@@ -218,17 +347,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function loadLastFile() {
-        const lastCsvContent = localStorage.getItem('lastCsvContent');
-        const lastCsvHash = localStorage.getItem('lastCsvHash');
+        const lastCsvContent  = localStorage.getItem('lastCsvContent');
+        const lastCsvHash     = localStorage.getItem('lastCsvHash');
         const lastCsvFileName = localStorage.getItem('lastCsvFileName');
 
         if (lastCsvContent && lastCsvHash) {
-            currentFileHash = lastCsvHash;
+            currentFileHash  = lastCsvHash;
             originalFileName = lastCsvFileName;
             processCsvContent(lastCsvContent);
-            window.dispatchEvent(new CustomEvent('tombola:csvloaded', {
-                detail: { content: lastCsvContent, hash: currentFileHash, filename: originalFileName }
-            }));
         }
     }
 
@@ -239,39 +365,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadLastFile();
     loadOptions();
+    loadDatasets();
 
     function updateStatusCounter() {
-        const totalRows = tableData.length;
+        const totalRows   = tableData.length;
         const checkedRows = getCheckedStates().length;
-        if (totalRows > 0) {
-            statusCounter.textContent = `Ausgegeben: ${checkedRows} / ${totalRows}`;
-        } else {
-            statusCounter.textContent = '';
-        }
+        statusCounter.textContent = totalRows > 0 ? `Ausgegeben: ${checkedRows} / ${totalRows}` : '';
     }
 
     function renderTable(data) {
         tableBody.innerHTML = '';
         const checkedStates = getCheckedStates();
-        const searchTerm = searchInput.value;
+        const searchTerm    = searchInput.value;
 
         data.forEach(item => {
-            const row = document.createElement('tr');
+            const row       = document.createElement('tr');
             const isChecked = checkedStates.includes(item.id);
-            if (isChecked) {
-                row.classList.add('checked');
-            }
+            if (isChecked) row.classList.add('checked');
 
-            let idContent = item.id;
+            let idContent   = item.id;
             let nameContent = item.name;
 
             if (searchTerm) {
                 const lowerSearchTerm = searchTerm.toLowerCase();
-
                 if (item.id.toLowerCase() === lowerSearchTerm) {
                     idContent = `<mark>${item.id}</mark>`;
                 }
-
                 if (item.name.toLowerCase().includes(lowerSearchTerm)) {
                     const regex = new RegExp(searchTerm.replace(/[-\\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
                     nameContent = item.name.replace(regex, match => `<mark>${match}</mark>`);
@@ -294,9 +413,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleSearch(event) {
         const searchTerm = event.target.value.toLowerCase();
-        const filteredData = tableData.filter(item => {
-            return item.id.toLowerCase() === searchTerm || item.name.toLowerCase().includes(searchTerm);
-        });
+        const filteredData = tableData.filter(item =>
+            item.id.toLowerCase() === searchTerm || item.name.toLowerCase().includes(searchTerm)
+        );
         renderTable(filteredData);
     }
 
@@ -311,17 +430,13 @@ document.addEventListener('DOMContentLoaded', () => {
         row.classList.toggle('checked', isChecked);
         let checkedStates = getCheckedStates();
         if (isChecked) {
-            if (!checkedStates.includes(id)) {
-                checkedStates.push(id);
-            }
+            if (!checkedStates.includes(id)) checkedStates.push(id);
         } else {
-            checkedStates = checkedStates.filter(checkedId => checkedId !== id);
+            checkedStates = checkedStates.filter(cid => cid !== id);
         }
         saveCheckedStates(checkedStates);
-        window.dispatchEvent(new CustomEvent('tombola:localchange', {
-            detail: { id, isChecked }
-        }));
         updateStatusCounter();
+        postToggle(id, isChecked);
     }
 
     function getCheckedStates() {
@@ -342,27 +457,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const checkedStates = getCheckedStates();
-
         let csvContent = "id,name,checked\r\n";
-
         tableData.forEach(item => {
-            const isChecked = checkedStates.includes(item.id);
-            const row = `${item.id},"${item.name}",${isChecked}`;
-            csvContent += row + "\r\n";
+            csvContent += `${item.id},"${item.name}",${checkedStates.includes(item.id)}\r\n`;
         });
 
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-
+        const url  = URL.createObjectURL(blob);
         const date = new Date();
-        const dateString = `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
-        const timeString = `${date.getHours().toString().padStart(2, '0')}${date.getMinutes().toString().padStart(2, '0')}`;
-        const baseName = originalFileName.replace(/\.csv$/i, '');
-        const exportFileName = `${baseName}_export_${dateString}_${timeString}.csv`;
+        const ds   = `${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}`;
+        const ts   = `${String(date.getHours()).padStart(2,'0')}${String(date.getMinutes()).padStart(2,'0')}`;
+        const base = originalFileName.replace(/\.csv$/i, '');
 
         link.setAttribute("href", url);
-        link.setAttribute("download", exportFileName);
+        link.setAttribute("download", `${base}_export_${ds}_${ts}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -370,17 +479,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function generateHash(string) {
-        const utf8 = new TextEncoder().encode(string);
+        const utf8       = new TextEncoder().encode(string);
         const hashBuffer = await crypto.subtle.digest('SHA-256', utf8);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(bytes => bytes.toString(16).padStart(2, '0')).join('');
-        return hashHex;
+        const hashArray  = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    // PWA Update Logic
+    // --- PWA update ---
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js');
-
         let refreshing;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
             if (refreshing) return;
@@ -388,20 +495,4 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
     }
-
-    window.addEventListener('tombola:remotechange', (e) => {
-        saveCheckedStates(e.detail.checkedIds);
-        renderTable(tableData);
-        updateStatusCounter();
-    });
-
-    window.addEventListener('tombola:remotecsv', (e) => {
-        const { content, hash, filename } = e.detail;
-        currentFileHash = hash;
-        originalFileName = filename;
-        localStorage.setItem('lastCsvContent', content);
-        localStorage.setItem('lastCsvHash', hash);
-        localStorage.setItem('lastCsvFileName', filename);
-        processCsvContent(content);
-    });
 });

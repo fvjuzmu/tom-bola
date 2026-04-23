@@ -9,25 +9,25 @@
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 </head>
 <body>
+    <input type="file" id="csvFile" accept=".csv" style="display:none">
+
     <div class="container">
         <img src="/icons/icon.svg" id="app-icon" alt="Tom Bola">
-        <input type="file" id="csvFile" accept=".csv">
-        <br>
         <div class="button-group">
-            <button id="exportCsvButton">CSV exportieren</button>
             <button id="optionsButton">Optionen</button>
             <button id="helpButton">Hilfe</button>
             <button id="installButton">App installieren</button>
         </div>
         <br>
         <div id="statusCounter"></div>
-        <div id="collab-bar">
-            <span id="collab-dot" data-state="offline">●</span>
-            <span id="collab-status">Nicht verbunden</span>
-            <span id="collab-myname" class="collab-name"></span>
-            <div class="collab-join">
-                <button id="collab-toggle">Verbinden</button>
-            </div>
+        <div id="sync-bar">
+            <span id="sync-dot" data-state="idle">●</span>
+            <span id="sync-status">Nicht verbunden</span>
+        </div>
+        <div id="dataset-bar">
+            <select id="dataset-select">
+                <option value="">— Datei auswählen —</option>
+            </select>
         </div>
         <input type="text" id="searchInput" placeholder="Suche nach ID oder Name...">
         <table id="csvTable">
@@ -63,20 +63,36 @@
                 <label><input type="checkbox" id="hideChecked"> Ausgegebene ausblenden</label>
             </div>
             <div class="option-group">
-                <h3>Mitspieler</h3>
-                <div id="collab-peer-list"><em>Nicht verbunden</em></div>
+                <h3>Daten</h3>
+                <button id="importCsvButton" class="option-btn">CSV importieren</button>
+                <button id="exportCsvButton" class="option-btn">CSV exportieren</button>
             </div>
         </div>
     </div>
 
-    <div id="pairingModal" class="modal">
-        <div class="modal-content pairing-modal-content">
-            <span class="close-button" id="pairing-close">&times;</span>
-            <div id="pairing-content"></div>
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="helpModalClose">&times;</span>
+            <h2>Hilfe</h2>
+            <div class="option-group">
+                <h3>CSV-Format</h3>
+                <p>Die CSV-Datei muss eine Kopfzeile mit den Spalten <code>id</code> und <code>name</code> haben. Eine optionale Spalte <code>checked</code> (true/false) wird beim Import berücksichtigt. Trennzeichen kann Komma oder Semikolon sein.</p>
+            </div>
+            <div class="option-group">
+                <h3>Suche</h3>
+                <p>Die Suche findet Namen (Teilübereinstimmung) und IDs (exakte Übereinstimmung).</p>
+            </div>
+            <div class="option-group">
+                <h3>Synchronisation</h3>
+                <p>Häkchen werden sofort an den Server übertragen. Alle 10 Sekunden werden Änderungen anderer Geräte abgerufen. Der Sync-Status ist unten links in der Leiste sichtbar.</p>
+            </div>
+            <div class="option-group">
+                <h3>CSV importieren / exportieren</h3>
+                <p>Der Import startet eine neue Tombola — die bisherige Datenbank wird automatisch gesichert. Der Export speichert die aktuelle Liste inklusive Abhak-Status als CSV-Datei.</p>
+            </div>
         </div>
     </div>
 
     <script src="app.js"></script>
-    <script type="module" src="collab.js"></script>
 </body>
 </html>
