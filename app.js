@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hideLogoCheckbox    = document.getElementById('hideLogo');
     const compactModeCheckbox = document.getElementById('compactMode');
     const selectSearchCheckbox = document.getElementById('selectSearchOnFocus');
+    const numericKeyboardCheckbox = document.getElementById('numericSearchKeyboard');
     const datasetSelect       = document.getElementById('dataset-select');
 
     let currentFileHash  = '';
@@ -112,6 +113,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.toggle('compact-mode', shouldEnable);
     }
 
+    function applyNumericSearchKeyboard(shouldEnable) {
+        if (shouldEnable) {
+            searchInput.setAttribute('inputmode', 'numeric');
+        } else {
+            searchInput.removeAttribute('inputmode');
+        }
+    }
+
     themeRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
             localStorage.setItem('theme', e.target.value);
@@ -139,21 +148,29 @@ document.addEventListener('DOMContentLoaded', () => {
         selectSearchOnFocus = e.target.checked;
     });
 
+    numericKeyboardCheckbox.addEventListener('change', (e) => {
+        localStorage.setItem('numericSearchKeyboard', e.target.checked);
+        applyNumericSearchKeyboard(e.target.checked);
+    });
+
     function loadOptions() {
         const savedTheme       = localStorage.getItem('theme') || 'auto';
         const savedHideChecked = localStorage.getItem('hideChecked') === 'true';
         const savedHideLogo    = localStorage.getItem('hideLogo') === 'true';
         const savedCompactMode = localStorage.getItem('compactMode') === 'true';
         const savedSelectSearchOnFocus = localStorage.getItem('selectSearchOnFocus') === 'true';
+        const savedNumericSearchKeyboard = localStorage.getItem('numericSearchKeyboard') === 'true';
         document.querySelector(`input[name="theme"][value="${savedTheme}"]`).checked = true;
         hideCheckedCheckbox.checked = savedHideChecked;
         hideLogoCheckbox.checked    = savedHideLogo;
         compactModeCheckbox.checked = savedCompactMode;
         selectSearchCheckbox.checked = savedSelectSearchOnFocus;
+        numericKeyboardCheckbox.checked = savedNumericSearchKeyboard;
         applyTheme(savedTheme);
         applyHideChecked(savedHideChecked);
         applyHideLogo(savedHideLogo);
         applyCompactMode(savedCompactMode);
+        applyNumericSearchKeyboard(savedNumericSearchKeyboard);
         selectSearchOnFocus = savedSelectSearchOnFocus;
     }
 
