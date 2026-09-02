@@ -203,8 +203,7 @@ body.compact-mode input[type="checkbox"] {
     vertical-align: middle;
 }
 
-body.compact-mode #app-icon,
-body.compact-mode #app-footer {
+body.compact-mode #app-icon {
     display: none;
 }
 
@@ -227,26 +226,6 @@ body.compact-mode th,
 body.compact-mode td {
     padding: 4px;
 }
-
-/* Footer */
-#app-footer {
-    text-align: center;
-    margin-top: 30px;
-    padding: 10px 0;
-    font-size: 0.8em;
-    opacity: 0.55;
-    border-top: 1px solid var(--table-border-color);
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-}
-
-#app-footer a {
-    color: var(--text-color);
-    text-decoration: none;
-}
-
-#app-footer a:hover { text-decoration: underline; }
 
 /* Sync-Status */
 #sync-bar {
