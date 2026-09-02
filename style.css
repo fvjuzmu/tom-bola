@@ -7,6 +7,7 @@ html, body {
 }
 
 :root {
+    --ui-scale: 1;
     --bg-color: #fff;
     --text-color: #222;
     --table-border-color: #ddd;
@@ -33,6 +34,25 @@ body {
     padding: 20px;
     background-color: var(--bg-color);
     color: var(--text-color);
+}
+
+input[type="checkbox"] {
+    zoom: 1.8;
+    vertical-align: middle;
+}
+
+#csvTable {
+    font-size: calc(1em * var(--ui-scale));
+}
+
+#csvTable input[type="checkbox"] {
+    zoom: calc(1.8 * var(--ui-scale));
+}
+
+#uiScale {
+    display: block;
+    width: 100%;
+    margin: 4px 0 10px;
 }
 
 .container {
@@ -200,12 +220,6 @@ body.hide-logo #app-icon {
 body.compact-mode {
     padding: 0 4px 4px;
     font-size: 1.15em;
-}
-
-body.compact-mode input[type="checkbox"] {
-    width: 1.3em;
-    height: 1.3em;
-    vertical-align: middle;
 }
 
 body.compact-mode #app-icon {

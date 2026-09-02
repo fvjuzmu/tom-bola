@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const compactModeCheckbox = document.getElementById('compactMode');
     const selectSearchCheckbox = document.getElementById('selectSearchOnFocus');
     const numericKeyboardCheckbox = document.getElementById('numericSearchKeyboard');
+    const uiScaleInput        = document.getElementById('uiScale');
+    const uiScaleValueLabel   = document.getElementById('uiScaleValue');
     const datasetSelect       = document.getElementById('dataset-select');
 
     let currentFileHash  = '';
@@ -121,6 +123,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function applyUiScale(percent) {
+        document.documentElement.style.setProperty('--ui-scale', percent / 100);
+        uiScaleValueLabel.textContent = `${percent}%`;
+    }
+
     themeRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
             localStorage.setItem('theme', e.target.value);
@@ -153,6 +160,14 @@ document.addEventListener('DOMContentLoaded', () => {
         applyNumericSearchKeyboard(e.target.checked);
     });
 
+    uiScaleInput.addEventListener('input', (e) => {
+        applyUiScale(parseInt(e.target.value, 10));
+    });
+
+    uiScaleInput.addEventListener('change', (e) => {
+        localStorage.setItem('uiScale', e.target.value);
+    });
+
     function loadOptions() {
         const savedTheme       = localStorage.getItem('theme') || 'auto';
         const savedHideChecked = localStorage.getItem('hideChecked') === 'true';
@@ -160,17 +175,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedCompactMode = localStorage.getItem('compactMode') === 'true';
         const savedSelectSearchOnFocus = localStorage.getItem('selectSearchOnFocus') === 'true';
         const savedNumericSearchKeyboard = localStorage.getItem('numericSearchKeyboard') === 'true';
+        const savedUiScale = localStorage.getItem('uiScale') || '100';
         document.querySelector(`input[name="theme"][value="${savedTheme}"]`).checked = true;
         hideCheckedCheckbox.checked = savedHideChecked;
         hideLogoCheckbox.checked    = savedHideLogo;
         compactModeCheckbox.checked = savedCompactMode;
         selectSearchCheckbox.checked = savedSelectSearchOnFocus;
         numericKeyboardCheckbox.checked = savedNumericSearchKeyboard;
+        uiScaleInput.value = savedUiScale;
         applyTheme(savedTheme);
         applyHideChecked(savedHideChecked);
         applyHideLogo(savedHideLogo);
         applyCompactMode(savedCompactMode);
         applyNumericSearchKeyboard(savedNumericSearchKeyboard);
+        applyUiScale(parseInt(savedUiScale, 10));
         selectSearchOnFocus = savedSelectSearchOnFocus;
     }
 
