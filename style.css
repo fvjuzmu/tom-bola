@@ -183,6 +183,40 @@ mark {
     display: none;
 }
 
+body.hide-logo #app-icon {
+    display: none;
+}
+
+/* Kompaktmodus: Fensterfläche maximal ausnutzen (kleine Displays) */
+body.compact-mode {
+    padding: 4px;
+}
+
+body.compact-mode #app-icon,
+body.compact-mode #app-footer {
+    display: none;
+}
+
+body.compact-mode .container {
+    max-width: 100%;
+}
+
+body.compact-mode #statusCounter,
+body.compact-mode #sync-bar,
+body.compact-mode #dataset-bar {
+    margin: 4px 0;
+}
+
+body.compact-mode input[type="text"],
+body.compact-mode #dataset-select {
+    width: 100%;
+}
+
+body.compact-mode th,
+body.compact-mode td {
+    padding: 4px;
+}
+
 /* Footer */
 #app-footer {
     text-align: center;

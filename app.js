@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeModalButton    = document.querySelector('.close-button');
     const themeRadios         = document.querySelectorAll('input[name="theme"]');
     const hideCheckedCheckbox = document.getElementById('hideChecked');
+    const hideLogoCheckbox    = document.getElementById('hideLogo');
+    const compactModeCheckbox = document.getElementById('compactMode');
     const datasetSelect       = document.getElementById('dataset-select');
 
     let currentFileHash  = '';
@@ -100,6 +102,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.toggle('hide-checked', shouldHide);
     }
 
+    function applyHideLogo(shouldHide) {
+        document.body.classList.toggle('hide-logo', shouldHide);
+    }
+
+    function applyCompactMode(shouldEnable) {
+        document.body.classList.toggle('compact-mode', shouldEnable);
+    }
+
     themeRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
             localStorage.setItem('theme', e.target.value);
@@ -112,13 +122,29 @@ document.addEventListener('DOMContentLoaded', () => {
         applyHideChecked(e.target.checked);
     });
 
+    hideLogoCheckbox.addEventListener('change', (e) => {
+        localStorage.setItem('hideLogo', e.target.checked);
+        applyHideLogo(e.target.checked);
+    });
+
+    compactModeCheckbox.addEventListener('change', (e) => {
+        localStorage.setItem('compactMode', e.target.checked);
+        applyCompactMode(e.target.checked);
+    });
+
     function loadOptions() {
         const savedTheme       = localStorage.getItem('theme') || 'auto';
         const savedHideChecked = localStorage.getItem('hideChecked') === 'true';
+        const savedHideLogo    = localStorage.getItem('hideLogo') === 'true';
+        const savedCompactMode = localStorage.getItem('compactMode') === 'true';
         document.querySelector(`input[name="theme"][value="${savedTheme}"]`).checked = true;
         hideCheckedCheckbox.checked = savedHideChecked;
+        hideLogoCheckbox.checked    = savedHideLogo;
+        compactModeCheckbox.checked = savedCompactMode;
         applyTheme(savedTheme);
         applyHideChecked(savedHideChecked);
+        applyHideLogo(savedHideLogo);
+        applyCompactMode(savedCompactMode);
     }
 
     // --- API sync ---
