@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hideCheckedCheckbox = document.getElementById('hideChecked');
     const hideLogoCheckbox    = document.getElementById('hideLogo');
     const compactModeCheckbox = document.getElementById('compactMode');
+    const selectSearchCheckbox = document.getElementById('selectSearchOnFocus');
     const datasetSelect       = document.getElementById('dataset-select');
 
     let currentFileHash  = '';
@@ -22,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let deferredPrompt;
     let lastSyncTime     = 0;
     let syncTimer        = null;
+    let selectSearchOnFocus = false;
 
     const API_URL = 'api.php';
 
@@ -132,19 +134,27 @@ document.addEventListener('DOMContentLoaded', () => {
         applyCompactMode(e.target.checked);
     });
 
+    selectSearchCheckbox.addEventListener('change', (e) => {
+        localStorage.setItem('selectSearchOnFocus', e.target.checked);
+        selectSearchOnFocus = e.target.checked;
+    });
+
     function loadOptions() {
         const savedTheme       = localStorage.getItem('theme') || 'auto';
         const savedHideChecked = localStorage.getItem('hideChecked') === 'true';
         const savedHideLogo    = localStorage.getItem('hideLogo') === 'true';
         const savedCompactMode = localStorage.getItem('compactMode') === 'true';
+        const savedSelectSearchOnFocus = localStorage.getItem('selectSearchOnFocus') === 'true';
         document.querySelector(`input[name="theme"][value="${savedTheme}"]`).checked = true;
         hideCheckedCheckbox.checked = savedHideChecked;
         hideLogoCheckbox.checked    = savedHideLogo;
         compactModeCheckbox.checked = savedCompactMode;
+        selectSearchCheckbox.checked = savedSelectSearchOnFocus;
         applyTheme(savedTheme);
         applyHideChecked(savedHideChecked);
         applyHideLogo(savedHideLogo);
         applyCompactMode(savedCompactMode);
+        selectSearchOnFocus = savedSelectSearchOnFocus;
     }
 
     // --- API sync ---
@@ -468,6 +478,9 @@ document.addEventListener('DOMContentLoaded', () => {
         updateStatusCounter();
         postToggle(id, isChecked);
         searchInput.focus();
+        if (selectSearchOnFocus) {
+            searchInput.select();
+        }
     }
 
     function getCheckedStates() {
