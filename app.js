@@ -441,8 +441,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (searchTerm) {
                 const lowerSearchTerm = searchTerm.toLowerCase();
-                if (item.id.toLowerCase() === lowerSearchTerm) {
-                    idContent = `<mark>${item.id}</mark>`;
+                if (item.id.toLowerCase().startsWith(lowerSearchTerm)) {
+                    idContent = `<mark>${item.id.slice(0, searchTerm.length)}</mark>${item.id.slice(searchTerm.length)}`;
                 }
                 if (item.name.toLowerCase().includes(lowerSearchTerm)) {
                     const regex = new RegExp(searchTerm.replace(/[-\\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
@@ -468,7 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const searchTerm = searchInput.value.toLowerCase();
         if (!searchTerm) return tableData;
         return tableData.filter(item =>
-            item.id.toLowerCase() === searchTerm || item.name.toLowerCase().includes(searchTerm)
+            item.id.toLowerCase().startsWith(searchTerm) || item.name.toLowerCase().includes(searchTerm)
         );
     }
 
