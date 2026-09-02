@@ -1,4 +1,4 @@
-const CACHE_NAME = 'de.juzmu.tom-bola-v6';
+const CACHE_NAME = 'de.juzmu.tom-bola-v8';
 const urlsToCache = [
   '/',
   '/index.html',
