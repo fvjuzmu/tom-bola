@@ -441,6 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveCheckedStates(checkedStates);
         updateStatusCounter();
         postToggle(id, isChecked);
+        searchInput.focus();
     }
 
     function getCheckedStates() {
