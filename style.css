@@ -1,3 +1,7 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 :root {
     --bg-color: #fff;
     --text-color: #222;
@@ -190,6 +194,13 @@ body.hide-logo #app-icon {
 /* Kompaktmodus: Fensterfläche maximal ausnutzen (kleine Displays) */
 body.compact-mode {
     padding: 4px;
+    font-size: 1.15em;
+}
+
+body.compact-mode input[type="checkbox"] {
+    width: 1.3em;
+    height: 1.3em;
+    vertical-align: middle;
 }
 
 body.compact-mode #app-icon,
