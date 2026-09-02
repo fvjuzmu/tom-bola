@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     applyServerState(data.items);
                 }
-                renderTable(tableData);
+                renderTable(getFilteredData());
                 updateStatusCounter();
             }
             setSyncStatus('ok', 'Synchronisiert');
@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (changed) {
             saveCheckedStates(checkedStates);
-            renderTable(tableData);
+            renderTable(getFilteredData());
             updateStatusCounter();
         }
     }
@@ -315,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (checkedIndex !== -1) saveCheckedStates(initialCheckedStates);
 
-        renderTable(tableData);
+        renderTable(getFilteredData());
         updateStatusCounter();
     }
 
@@ -411,12 +411,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function handleSearch(event) {
-        const searchTerm = event.target.value.toLowerCase();
-        const filteredData = tableData.filter(item =>
+    function getFilteredData() {
+        const searchTerm = searchInput.value.toLowerCase();
+        if (!searchTerm) return tableData;
+        return tableData.filter(item =>
             item.id.toLowerCase() === searchTerm || item.name.toLowerCase().includes(searchTerm)
         );
-        renderTable(filteredData);
+    }
+
+    function handleSearch() {
+        renderTable(getFilteredData());
     }
 
     function toggleCheckState(row, id, isChecked) {
