@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const compactModeCheckbox = document.getElementById('compactMode');
     const selectSearchCheckbox = document.getElementById('selectSearchOnFocus');
     const numericKeyboardCheckbox = document.getElementById('numericSearchKeyboard');
+    const showChangedByCheckbox = document.getElementById('showChangedBy');
     const uiScaleInput        = document.getElementById('uiScale');
     const uiScaleValueLabel   = document.getElementById('uiScaleValue');
     const datasetSelect       = document.getElementById('dataset-select');
@@ -27,8 +28,31 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastSyncTime     = 0;
     let syncTimer        = null;
     let selectSearchOnFocus = false;
+    let showChangedBy    = false;
+    let clockOffset      = parseInt(localStorage.getItem('clockOffset'), 10) || 0;
 
     const API_URL = 'api.php';
+
+    // Serverzeit für Toggle-Zeitstempel statt Geräteuhr direkt: gleicht Uhrenabweichung
+    // aus, damit Last-Write-Wins-Vergleiche über Geräte hinweg im selben Zeitraum liegen.
+    function serverNow() {
+        return Date.now() + clockOffset;
+    }
+
+    // --- Anonymer Geräte-Name (wie bei Google Docs/CryptPad) ---
+    const DEVICE_ADJECTIVES = ['Fröhlicher', 'Schneller', 'Mutiger', 'Stiller', 'Wilder', 'Kluger', 'Flinker', 'Ruhiger', 'Tapferer', 'Neugieriger', 'Freundlicher', 'Geduldiger', 'Sonniger', 'Verschmitzter', 'Aufmerksamer'];
+    const DEVICE_ANIMALS    = ['Fuchs', 'Falke', 'Bär', 'Wolf', 'Igel', 'Hase', 'Luchs', 'Eule', 'Otter', 'Dachs', 'Biber', 'Reiher', 'Marder', 'Hirsch', 'Pinguin'];
+
+    function getDeviceName() {
+        let name = localStorage.getItem('deviceName');
+        if (!name) {
+            const adj    = DEVICE_ADJECTIVES[Math.floor(Math.random() * DEVICE_ADJECTIVES.length)];
+            const animal = DEVICE_ANIMALS[Math.floor(Math.random() * DEVICE_ANIMALS.length)];
+            name = `${adj} ${animal}`;
+            localStorage.setItem('deviceName', name);
+        }
+        return name;
+    }
 
     // --- PWA install ---
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -160,6 +184,12 @@ document.addEventListener('DOMContentLoaded', () => {
         applyNumericSearchKeyboard(e.target.checked);
     });
 
+    showChangedByCheckbox.addEventListener('change', (e) => {
+        localStorage.setItem('showChangedBy', e.target.checked);
+        showChangedBy = e.target.checked;
+        renderTable(getFilteredData());
+    });
+
     uiScaleInput.addEventListener('input', (e) => {
         applyUiScale(parseInt(e.target.value, 10));
     });
@@ -175,6 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedCompactMode = localStorage.getItem('compactMode') === 'true';
         const savedSelectSearchOnFocus = localStorage.getItem('selectSearchOnFocus') === 'true';
         const savedNumericSearchKeyboard = localStorage.getItem('numericSearchKeyboard') === 'true';
+        const savedShowChangedBy = localStorage.getItem('showChangedBy') === 'true';
         const savedUiScale = localStorage.getItem('uiScale') || '100';
         document.querySelector(`input[name="theme"][value="${savedTheme}"]`).checked = true;
         hideCheckedCheckbox.checked = savedHideChecked;
@@ -182,6 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         compactModeCheckbox.checked = savedCompactMode;
         selectSearchCheckbox.checked = savedSelectSearchOnFocus;
         numericKeyboardCheckbox.checked = savedNumericSearchKeyboard;
+        showChangedByCheckbox.checked = savedShowChangedBy;
         uiScaleInput.value = savedUiScale;
         applyTheme(savedTheme);
         applyHideChecked(savedHideChecked);
@@ -190,6 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         applyNumericSearchKeyboard(savedNumericSearchKeyboard);
         applyUiScale(parseInt(savedUiScale, 10));
         selectSearchOnFocus = savedSelectSearchOnFocus;
+        showChangedBy = savedShowChangedBy;
     }
 
     // --- API sync ---
@@ -230,11 +263,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function selectDataset(hash, filename) {
+        const isNewDataset = hash !== currentFileHash;
         currentFileHash  = hash;
         originalFileName = filename;
         datasetSelect.value = hash;
-        tableData    = [];
-        lastSyncTime = 0;
+        if (isNewDataset) {
+            tableData    = [];
+            lastSyncTime = 0;
+        } else {
+            lastSyncTime = getStoredSyncTime(hash);
+        }
         startPolling();
     }
 
@@ -259,19 +297,118 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function postToggle(id, checked) {
+    async function postToggle(id, checked, ts) {
         if (!currentFileHash) return;
         try {
             const r = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'toggle', id, dataset: currentFileHash, checked })
+                body: JSON.stringify({ action: 'toggle', id, dataset: currentFileHash, checked, ts, device: getDeviceName() })
             });
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json().catch(() => null);
+            if (!r.ok || !data || !data.ok) throw new Error(`HTTP ${r.status}`);
+            clearPendingToggle(currentFileHash, id, checked, ts);
+            setSyncStatus('ok', 'Synchronisiert');
         } catch (err) {
             console.warn('Toggle-Sync-Fehler:', err);
             setSyncStatus('error', 'Sync-Fehler');
         }
+    }
+
+    // --- Pending-Toggle-Queue (offline abgehakte Items, die noch nicht auf dem Server sind) ---
+    function pendingKey(hash) {
+        return `pendingToggles:${hash}`;
+    }
+
+    function getPendingToggles(hash) {
+        if (!hash) return {};
+        const raw = localStorage.getItem(pendingKey(hash));
+        return raw ? JSON.parse(raw) : {};
+    }
+
+    function savePendingToggles(hash, pending) {
+        if (!hash) return;
+        localStorage.setItem(pendingKey(hash), JSON.stringify(pending));
+    }
+
+    function queuePendingToggle(hash, id, checked, ts) {
+        const pending = getPendingToggles(hash);
+        pending[id] = { checked, ts };
+        savePendingToggles(hash, pending);
+    }
+
+    function clearPendingToggle(hash, id, checked, ts) {
+        const pending = getPendingToggles(hash);
+        const entry   = pending[id];
+        if (entry && entry.checked === checked && entry.ts === ts) {
+            delete pending[id];
+            savePendingToggles(hash, pending);
+        }
+    }
+
+    function clearPendingToggles(hash) {
+        if (!hash) return;
+        localStorage.removeItem(pendingKey(hash));
+    }
+
+    async function flushPendingToggles() {
+        if (!currentFileHash) return;
+        try {
+            const pending = getPendingToggles(currentFileHash);
+            const ids = Object.keys(pending);
+            if (ids.length === 0) return;
+
+            const items = ids.map(id => ({ id, checked: pending[id].checked, ts: pending[id].ts }));
+            const r = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'toggle_batch', dataset: currentFileHash, items, device: getDeviceName() })
+            });
+            const data = await r.json().catch(() => null);
+            if (r.ok && data && data.ok) {
+                clearPendingToggles(currentFileHash);
+            }
+        } catch (err) {
+            console.warn('Batch-Sync-Fehler:', err);
+        }
+    }
+
+    // --- Sync-Zeitpunkt je Datensatz persistieren ---
+    function syncTimeKey(hash) {
+        return `lastSyncTime:${hash}`;
+    }
+
+    function getStoredSyncTime(hash) {
+        if (!hash) return 0;
+        const v = localStorage.getItem(syncTimeKey(hash));
+        return v ? (parseInt(v, 10) || 0) : 0;
+    }
+
+    function setStoredSyncTime(hash, value) {
+        if (!hash) return;
+        localStorage.setItem(syncTimeKey(hash), String(value));
+    }
+
+    // --- Wer/wann zuletzt abgehakt hat, je Datensatz persistiert ---
+    function metaKey(hash) {
+        return `itemMeta:${hash}`;
+    }
+
+    function getItemMeta(hash) {
+        if (!hash) return {};
+        const raw = localStorage.getItem(metaKey(hash));
+        return raw ? JSON.parse(raw) : {};
+    }
+
+    function saveItemMeta(hash, meta) {
+        if (!hash) return;
+        localStorage.setItem(metaKey(hash), JSON.stringify(meta));
+    }
+
+    function setItemMeta(hash, id, by, at) {
+        const meta = getItemMeta(hash);
+        meta[id] = { by, at };
+        saveItemMeta(hash, meta);
     }
 
     async function fetchChanges() {
@@ -281,6 +418,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             const data = await r.json();
             lastSyncTime = data.server_time;
+            setStoredSyncTime(currentFileHash, lastSyncTime);
+            clockOffset = data.server_time - Date.now();
+            localStorage.setItem('clockOffset', String(clockOffset));
 
             if (data.items && data.items.length > 0) {
                 // Bootstrap: first fetch (since=0) with no local data
@@ -289,6 +429,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     tableData.sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10));
                     const checkedIds = data.items.filter(i => i.checked).map(i => i.id);
                     saveCheckedStates(checkedIds);
+                    const meta = {};
+                    data.items.forEach(i => { meta[i.id] = { by: i.changed_by || '', at: i.updated_at }; });
+                    saveItemMeta(currentFileHash, meta);
                     const csvContent = 'id,name\n' + tableData.map(i => `${i.id},"${i.name}"`).join('\n');
                     localStorage.setItem('lastCsvContent',  csvContent);
                     localStorage.setItem('lastCsvHash',      currentFileHash);
@@ -310,7 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentFileHash) return;
         let checkedStates = getCheckedStates();
         let changed = false;
-        items.forEach(({ id, checked }) => {
+        const meta = getItemMeta(currentFileHash);
+        items.forEach(({ id, checked, changed_by, updated_at }) => {
             const isChecked  = Boolean(checked);
             const wasChecked = checkedStates.includes(id);
             if (isChecked && !wasChecked) {
@@ -320,7 +464,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 checkedStates = checkedStates.filter(cid => cid !== id);
                 changed = true;
             }
+            meta[id] = { by: changed_by || '', at: updated_at };
         });
+        saveItemMeta(currentFileHash, meta);
         if (changed) {
             saveCheckedStates(checkedStates);
             renderTable(getFilteredData());
@@ -328,10 +474,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function startPolling() {
+    async function startPolling() {
         if (syncTimer) clearInterval(syncTimer);
+        await flushPendingToggles();
         fetchChanges();
-        syncTimer = setInterval(fetchChanges, 10000);
+        syncTimer = setInterval(async () => {
+            await flushPendingToggles();
+            fetchChanges();
+        }, 10000);
     }
 
     // --- Help ---
@@ -474,12 +624,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${nameContent}</td>
             `;
 
+            renderChangedByInfo(row, item.id, isChecked);
+
             row.querySelector('input[type="checkbox"]').addEventListener('change', (e) => {
                 toggleCheckState(row, item.id, e.target.checked);
             });
 
             tableBody.appendChild(row);
         });
+    }
+
+    function renderChangedByInfo(row, id, isChecked) {
+        const nameTd = row.children[2];
+        const existing = nameTd.querySelector('.changed-by');
+        if (existing) {
+            const br = existing.previousElementSibling;
+            existing.remove();
+            if (br && br.tagName === 'BR') br.remove();
+        }
+
+        if (!showChangedBy || !isChecked) return;
+        const meta = getItemMeta(currentFileHash)[id];
+        if (!meta || !meta.by) return;
+
+        const time = new Date(meta.at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        nameTd.appendChild(document.createElement('br'));
+        const small = document.createElement('small');
+        small.className   = 'changed-by';
+        small.textContent = `${meta.by}, ${time}`;
+        nameTd.appendChild(small);
     }
 
     function getFilteredData() {
@@ -511,7 +684,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         saveCheckedStates(checkedStates);
         updateStatusCounter();
-        postToggle(id, isChecked);
+        const ts = serverNow();
+        setItemMeta(currentFileHash, id, getDeviceName(), ts);
+        renderChangedByInfo(row, id, isChecked);
+        queuePendingToggle(currentFileHash, id, isChecked, ts);
+        postToggle(id, isChecked, ts);
         searchInput.focus();
         if (selectSearchOnFocus) {
             searchInput.select();

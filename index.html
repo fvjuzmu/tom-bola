@@ -62,6 +62,7 @@
                 <label><input type="checkbox" id="compactMode"> Kompaktmodus (für kleine Displays)</label>
                 <label><input type="checkbox" id="selectSearchOnFocus"> Sucheingabe nach Abhaken markieren</label>
                 <label><input type="checkbox" id="numericSearchKeyboard"> Nummerische Tastatur bei der Suche (mobil)</label>
+                <label><input type="checkbox" id="showChangedBy"> Zeige, wer und wann abgehakt hat</label>
                 <label for="uiScale">Tabellen-Text- &amp; Checkbox-Größe (<span id="uiScaleValue">100%</span>)</label>
                 <input type="range" id="uiScale" min="80" max="200" step="10" value="100">
             </div>
@@ -87,7 +88,9 @@
             </div>
             <div class="option-group">
                 <h3>Synchronisation</h3>
-                <p>Häkchen werden sofort an den Server übertragen. Alle 10 Sekunden werden Änderungen anderer Geräte abgerufen. Der Sync-Status ist unten links in der Leiste sichtbar.</p>
+                <p>Häkchen werden sofort an den Server übertragen. Alle 10 Sekunden werden Änderungen anderer Geräte abgerufen. Der Sync-Status ist unten links in der Leiste sichtbar. Offline gesetzte Häkchen werden lokal gespeichert und automatisch nachgeliefert, sobald wieder eine Verbindung besteht.</p>
+                <p>Bei gleichzeitigen Änderungen auf mehreren Geräten gewinnt die zeitlich spätere Änderung, gemessen am Zeitpunkt des Klicks auf dem jeweiligen Gerät (nicht am Zeitpunkt der Übertragung). Dafür wird der Systemuhr des Geräts vertraut — eine falsch oder absichtlich verstellte Uhr kann daher fremde, eigentlich neuere Änderungen überschreiben. Für den internen Einsatz bei einer Tombola ist dieses Risiko vertretbar.</p>
+                <p>Jedes Gerät erhält beim ersten Start einen zufälligen, anonymen Namen (z.&nbsp;B. „Fröhlicher Fuchs"), der lokal gespeichert wird und keiner Person zugeordnet ist. Über die Option „Zeige, wer und wann abgehakt hat" kann optional angezeigt werden, welches Gerät einen Eintrag zuletzt abgehakt hat.</p>
             </div>
             <div class="option-group">
                 <h3>CSV importieren / exportieren</h3>

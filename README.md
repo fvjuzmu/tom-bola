@@ -11,7 +11,8 @@ Eine einfache Progressive Web App (PWA) zur Verwaltung von Tombola-Ziehungen.
 - Live-Zähler (ausgegeben / gesamt)
 - Aktuelle Liste als CSV exportieren
 - **Echtzeit-Synchronisation** — mehrere Geräte arbeiten live an derselben Liste (PHP/SQLite-Backend, Polling alle 10 Sekunden)
-- Offline-First: funktioniert ohne Netzwerk (localStorage-Cache), synchronisiert sich automatisch beim Reconnect
+- Offline-First: funktioniert ohne Netzwerk (localStorage-Cache), synchronisiert sich automatisch beim Reconnect (inkl. Warteschlange für offline gesetzte Häkchen)
+- Optional sichtbar: wer (anonymer Geräte-Name) und wann zuletzt abgehakt hat
 - Installierbar als native App (PWA)
 - Light / Dark / Auto Theme
 
@@ -46,6 +47,12 @@ Jede hochgeladene CSV wird als eigener Datensatz in der Datenbank gespeichert �
 ### Synchronisation
 
 Häkchen werden sofort an den Server übertragen (POST). Alle 10 Sekunden werden Änderungen anderer Geräte abgerufen (GET mit Zeitstempel — nur geänderte Einträge). Der Sync-Status ist als farbiger Punkt oberhalb der Tabelle sichtbar.
+
+Offline gesetzte Häkchen werden lokal in einer Warteschlange gehalten und automatisch nachgeliefert, sobald wieder eine Verbindung besteht (`toggle_batch`).
+
+Bei gleichzeitigen Änderungen entscheidet die Zeit des Klicks auf dem jeweiligen Gerät (nicht die Ankunftszeit auf dem Server) per Last-Write-Wins — eine spät nachgelieferte Offline-Änderung überschreibt keine inzwischen neuere Änderung eines anderen Geräts. Das setzt Vertrauen in die Systemuhr jedes Geräts voraus: Eine falsch gestellte Uhr kann fremde Änderungen überschreiben. Für den internen Einsatz vertretbar, aber kein Schutz gegen böswillige Clients.
+
+Jedes Gerät bekommt beim ersten Start einen zufälligen, anonymen Namen (z. B. „Fröhlicher Fuchs"). Optional („Zeige, wer und wann abgehakt hat") wird dieser Name inklusive Zeitstempel bei abgehakten Einträgen angezeigt.
 
 ## Technologie
 

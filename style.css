@@ -157,6 +157,11 @@ mark {
     color: #000;
 }
 
+.changed-by {
+    color: var(--checked-text-color);
+    font-size: 0.85em;
+}
+
 .modal {
     display: none;
     position: fixed;

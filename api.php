@@ -52,6 +52,17 @@ function db(): PDO
             PRIMARY KEY (id, dataset)
         );
     ");
+
+    // Migration: add changed_by column (device name of the last toggle) if missing
+    $cols = $pdo->query("PRAGMA table_info(participants)")->fetchAll(PDO::FETCH_ASSOC);
+    $hasChangedBy = false;
+    foreach ($cols as $col) {
+        if ($col['name'] === 'changed_by') { $hasChangedBy = true; break; }
+    }
+    if (!$hasChangedBy) {
+        $pdo->exec("ALTER TABLE participants ADD COLUMN changed_by TEXT NOT NULL DEFAULT ''");
+    }
+
     return $pdo;
 }
 
@@ -64,6 +75,23 @@ function detect_delimiter(string $csv): string
 {
     $first = strtok($csv, "\n");
     return substr_count((string)$first, ';') >= substr_count((string)$first, ',') ? ';' : ',';
+}
+
+// Client-supplied event time is trusted (used for last-write-wins ordering across
+// offline devices) — clamp to something plausible so a broken/malicious clock can't
+// permanently pin a row far in the future or corrupt sorting with negative values.
+function client_ts($raw): int
+{
+    $ts = is_numeric($raw) ? (int)$raw : now_ms();
+    $max = now_ms() + 24 * 3600 * 1000;
+    if ($ts < 0)    return now_ms();
+    if ($ts > $max) return $max;
+    return $ts;
+}
+
+function client_device($raw): string
+{
+    return mb_substr(trim(strip_tags((string)($raw ?? ''))), 0, 40);
 }
 
 function json_ok(array $extra = []): void
@@ -109,7 +137,7 @@ if ($method === 'GET') {
     }
 
     $stmt = db()->prepare(
-        'SELECT id, name, checked, updated_at
+        'SELECT id, name, checked, updated_at, changed_by
          FROM participants
          WHERE dataset = ? AND updated_at > ?
          ORDER BY CAST(id AS INTEGER), id'
@@ -142,12 +170,49 @@ if ($method === 'POST') {
             json_err('id, dataset und checked erforderlich');
         }
 
-        $ts   = now_ms();
-        $stmt = db()->prepare(
-            'UPDATE participants SET checked = ?, updated_at = ? WHERE id = ? AND dataset = ?'
+        $ts     = client_ts($body['ts'] ?? null);
+        $device = client_device($body['device'] ?? null);
+
+        $pdo = db();
+        // Last-write-wins by client event time, not arrival time: a toggle queued
+        // offline and flushed late must not overwrite a genuinely newer change made
+        // by another device in the meantime.
+        $stmt = $pdo->prepare(
+            'UPDATE participants SET checked = ?, updated_at = ?, changed_by = ?
+             WHERE id = ? AND dataset = ? AND updated_at <= ?'
         );
-        $stmt->execute([$checked, $ts, $id, $dataset]);
-        json_ok(['updated_at' => $ts]);
+        $stmt->execute([$checked, $ts, $device, $id, $dataset, $ts]);
+        json_ok(['updated_at' => $ts, 'applied' => $stmt->rowCount() > 0]);
+    }
+
+    // Toggle multiple checked states in one request ------------------------
+    if ($action === 'toggle_batch') {
+        $dataset = isset($body['dataset']) ? (string)$body['dataset'] : null;
+        $items   = $body['items'] ?? null;
+        if ($dataset === null || !is_array($items)) {
+            json_err('dataset und items erforderlich');
+        }
+        $device = client_device($body['device'] ?? null);
+
+        $pdo  = db();
+        $stmt = $pdo->prepare(
+            'UPDATE participants SET checked = ?, updated_at = ?, changed_by = ?
+             WHERE id = ? AND dataset = ? AND updated_at <= ?'
+        );
+
+        $applied = 0;
+        $pdo->beginTransaction();
+        foreach ($items as $item) {
+            if (!isset($item['id']) || !array_key_exists('checked', $item)) continue;
+            $id      = (string)$item['id'];
+            $checked = (int)(bool)$item['checked'];
+            $ts      = client_ts($item['ts'] ?? null);
+            $stmt->execute([$checked, $ts, $device, $id, $dataset, $ts]);
+            if ($stmt->rowCount() > 0) $applied++;
+        }
+        $pdo->commit();
+
+        json_ok(['updated_at' => now_ms(), 'applied' => $applied]);
     }
 
     // Load CSV → add new dataset (no wipe) --------------------------------
